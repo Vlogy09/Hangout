@@ -1,0 +1,219 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlyingFish - Media Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #profile, #mediaSection {
+            margin: 20px;
+        }
+
+        #editName {
+            display: none;
+        }
+
+        img, video {
+            max-width: 400px;
+            margin-top: 10px;
+        }
+
+        #searchContainer {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="Search by title..." onkeyup="filterMedia()">
+    </div>
+
+    <div id="profile">
+        <h2>Profile</h2>
+        <p id="displayName">Name: User2</p>
+        <button onclick="editName()">Edit Name</button>
+        <div id="editName">
+            <input type="text" id="nameInput" placeholder="Enter new name">
+            <button onclick="saveName()">Save</button>
+        </div>
+    </div>
+
+    <div id="mediaSection">
+        <h2>Media Section</h2>
+
+        <button id="toggleVideoButton" onclick="toggleUpload('video')">Upload Video</button>
+        <div id="videoUploadSection" style="display:none;">
+            <input type="text" id="videoNameInput" placeholder="Enter video name">
+            <input type="file" id="videoUpload" accept="video/*">
+            <button onclick="uploadVideo()">Upload Video</button>
+        </div>
+
+        <button id="toggleImageButton" onclick="toggleUpload('image')">Upload Image</button>
+        <div id="imageUploadSection" style="display:none;">
+            <input type="text" id="imageNameInput" placeholder="Enter image name">
+            <input type="file" id="imageUpload" accept="image/*">
+            <button onclick="uploadImage()">Upload Image</button>
+        </div>
+
+        <div id="mediaContainer"></div>
+    </div>
+
+    <script>
+        // Load user details and media items when the page loads
+        window.onload = function () {
+            const savedName = localStorage.getItem('userName');
+            if (savedName) {
+                document.getElementById('displayName').innerText = "Name: " + savedName;
+            }
+            loadMedia(); // Load media items from localStorage
+        };
+
+        function editName() {
+            document.getElementById('editName').style.display = 'block';
+        }
+
+        function saveName() {
+            const newName = document.getElementById('nameInput').value;
+            localStorage.setItem('userName', newName);
+            document.getElementById('displayName').innerText = "Name: " + newName;
+            document.getElementById('editName').style.display = 'none';
+            document.getElementById('nameInput').value = '';
+        }
+
+        function toggleUpload(type) {
+            const uploadSection = document.getElementById(type === 'video' ? 'videoUploadSection' : 'imageUploadSection');
+            uploadSection.style.display = uploadSection.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function uploadVideo() {
+            const videoInput = document.getElementById('videoUpload');
+            const videoName = document.getElementById('videoNameInput').value;
+
+            if (videoInput.files.length > 0 && videoName) {
+                const file = videoInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const videoURL = event.target.result; // Get the data URL
+                    const mediaElement = createMediaElement('video', videoName, videoURL);
+                    document.getElementById('mediaContainer').appendChild(mediaElement);
+                    saveMedia('video', videoName, videoURL); // Save video details
+                };
+                reader.readAsDataURL(file); // Read as data URL
+                resetVideoInput();
+            } else {
+                alert("Please enter a video name and select a video file.");
+            }
+        }
+
+        function uploadImage() {
+            const imageInput = document.getElementById('imageUpload');
+            const imageName = document.getElementById('imageNameInput').value;
+
+            if (imageInput.files.length > 0 && imageName) {
+                const file = imageInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const imageURL = event.target.result; // Get the data URL
+                    const mediaElement = createMediaElement('image', imageName, imageURL);
+                    document.getElementById('mediaContainer').appendChild(mediaElement);
+                    saveMedia('image', imageName, imageURL); // Save image details
+                };
+                reader.readAsDataURL(file); // Read as data URL
+                resetImageInput();
+            } else {
+                alert("Please enter an image name and select an image file.");
+            }
+        }
+
+        function createMediaElement(type, name, url, likes = 0, dislikes = 0) {
+            const mediaElement = document.createElement('div');
+            mediaElement.innerHTML = `
+                    ${type === 'video' ? `<video controls><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>` : `<img src="${url}" alt="${name}">`}
+                    <p>${name}
+                        <button onclick="toggleLike(this, '${name}')">Like</button> <span id="${name}-likes">Likes: ${likes}</span><br>
+                        <button onclick="toggleDislike(this, '${name}')">Dislike</button> <span id="${name}-dislikes">Dislikes: ${dislikes}</span><br>
+                        <button onclick="deleteMedia(this, '${name}')">Delete</button>
+                    </p>`;
+            return mediaElement;
+        }
+
+        function saveMedia(type, name, url) {
+            const media = JSON.parse(localStorage.getItem('media')) || [];
+            media.push({ type, name, url, likes: 0, dislikes: 0 }); // Save media details with initial likes/dislikes
+            localStorage.setItem('media', JSON.stringify(media));
+        }
+
+        function loadMedia() {
+            const media = JSON.parse(localStorage.getItem('media')) || [];
+            const mediaContainer = document.getElementById('mediaContainer');
+            mediaContainer.innerHTML = ''; // Clear current container
+
+            media.forEach(item => {
+                const mediaElement = createMediaElement(item.type, item.name, item.url, item.likes, item.dislikes);
+                mediaContainer.appendChild(mediaElement); // Append all saved media
+            });
+        }
+
+        function toggleLike(button, name) {
+            let media = JSON.parse(localStorage.getItem('media'));
+            let item = media.find(m => m.name === name);
+            if (item) {
+                item.likes += 1; // Increase like count
+                localStorage.setItem('media', JSON.stringify(media));
+                loadMedia(); // Reload to update the display
+            }
+        }
+
+        function toggleDislike(button, name) {
+            let media = JSON.parse(localStorage.getItem('media'));
+            let item = media.find(m => m.name === name);
+            if (item) {
+                item.dislikes += 1; // Increase dislike count
+                localStorage.setItem('media', JSON.stringify(media));
+                loadMedia(); // Reload to update the display
+            }
+        }
+
+        function deleteMedia(button, name) {
+            if (confirm('Are you sure you want to delete this media?')) {
+                let media = JSON.parse(localStorage.getItem('media')) || [];
+                const updatedMedia = media.filter(item => item.name !== name); // Filter out the deleted item
+                localStorage.setItem('media', JSON.stringify(updatedMedia));
+                loadMedia(); // Reload to update the display
+            }
+        }
+
+        function filterMedia() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const mediaElements = document.getElementById('mediaContainer').children;
+
+            Array.from(mediaElements).forEach(mediaElement => {
+                const mediaName = mediaElement.querySelector('p').innerText.toLowerCase();
+                mediaElement.style.display = mediaName.includes(query) ? 'block' : 'none'; // Filter based on query
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                filterMedia();
+            }
+        });
+
+        function resetVideoInput() {
+            document.getElementById('videoNameInput').value = '';
+            document.getElementById('videoUpload').value = '';
+        }
+
+        function resetImageInput() {
+            document.getElementById('imageNameInput').value = '';
+            document.getElementById('imageUpload').value = '';
+        }
+    </script>
+</body>
+</html>
+
